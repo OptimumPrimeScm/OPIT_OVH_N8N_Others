@@ -1,0 +1,38 @@
+{
+"team_id":"",
+"resources":
+[
+    {
+        "resource_id": "res_1769213970028_2azzei1m9",
+        "platform": "SerenArt Files",
+        "url": "https://jq8nqrkovkimhwqt.public.blob.vercel-storage.com/teams/team_e416de29-2abe-4c79-9262-a5bc4b8ad9e0/files/file_1769213964845_b67fwf-OPIT_Iso_White.png",
+        "usage_count": 0,
+        "tags": [
+            "logowhite"
+        ],
+        "usage_history": [],
+        "title": "OPIT_Iso_White.png",
+        "description": "Logo white",
+        "added_by_name": "NA",
+        "added_at": "2026-01-24T00:19:30.028Z",
+        "added_by_email": "leonardo.pintos@gmail.com",
+        "type": "images"
+    },
+    {
+        "added_by_name": "NA",
+        "platform": "SerenArt Files",
+        "added_by_email": "leonardo.pintos@gmail.com",
+        "url": "https://jq8nqrkovkimhwqt.public.blob.vercel-storage.com/teams/team_e416de29-2abe-4c79-9262-a5bc4b8ad9e0/files/file_1769214328066_mmcfum-ebook.pdf",
+        "resource_id": "res_1769214336537_de8nmm4yx",
+        "added_at": "2026-01-24T00:25:36.537Z",
+        "title": "ebook.pdf",
+        "usage_history": [],
+        "type": "documents",
+        "description": "Ebook Mindfullness",
+        "tags": [
+            "EbookMindfullness"
+        ],
+        "usage_count": 0
+    }
+]
+}

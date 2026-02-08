@@ -1,0 +1,22 @@
+# Secrets
+.env
+*.env
+.env.*
+**/.env
+
+# Docker / local
+*.log
+.DS_Store
+
+# Persistent volumes / data (NO subir)
+postgres/
+redis/
+n8n/
+qdrant/
+ollama/
+certbot/conf/
+certbot/www/
+
+# Nginx caches or temp (si existieran)
+**/cache/
+**/tmp/

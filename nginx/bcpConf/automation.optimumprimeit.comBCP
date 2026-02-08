@@ -1,0 +1,51 @@
+# ========== HTTP (solo challenge + redirect) ==========
+server {
+    listen 80;
+    server_name automation.optimumprimeit.com;
+
+    # Let's Encrypt HTTP-01 challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        try_files $uri =404;
+    }
+
+    # el resto redirige a https
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ========== HTTPS ==========
+server {
+    listen 443 ssl http2;
+    server_name automation.optimumprimeit.com;
+
+    ssl_certificate     /etc/letsencrypt/live/automation.optimumprimeit.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/automation.optimumprimeit.com/privkey.pem;
+
+    # opciones TLS mínimas razonables
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # (opcional) seguridad básica
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header Referrer-Policy strict-origin-when-cross-origin;
+
+    location / {
+        proxy_pass http://serenart_n8n:5678;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_buffering off;
+        proxy_read_timeout 3600s;
+    }
+}

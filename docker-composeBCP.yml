@@ -1,0 +1,132 @@
+# docker-compose.yml (final)
+# Nota: el campo "version" ya no hace falta en docker compose v2, lo quité.
+
+networks:
+  serenart_net:
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: serenart_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+      # Certbot (webroot + certs)
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+    depends_on:
+      - n8n
+    restart: unless-stopped
+    networks:
+      - serenart_net
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: serenart_certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    # contenedor "idle" para poder hacer `docker compose exec certbot ...`
+    entrypoint: sh -c "trap exit TERM; while :; do sleep 12h & wait $${!}; done;"
+    restart: unless-stopped
+    networks:
+      - serenart_net
+
+  certbot-renew:
+    image: certbot/certbot:latest
+    container_name: serenart_certbot_renew
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h; done"
+    restart: unless-stopped
+    networks:
+      - serenart_net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: serenart_postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - serenart_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: serenart_redis
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - ./redis:/data
+    restart: unless-stopped
+    networks:
+      - serenart_net
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: serenart_n8n
+    environment:
+      - NODE_ENV=production
+      - GENERIC_TIMEZONE=Europe/Madrid
+
+      # Base URL para webhooks (poné DOMAIN_OR_IP=automation.optimumprimeit.com)
+      - N8N_HOST=${DOMAIN_OR_IP}
+      - N8N_PROTOCOL=${N8N_PROTOCOL}
+      - N8N_PORT=${N8N_PORT}
+      - WEBHOOK_URL=${N8N_PROTOCOL}://${DOMAIN_OR_IP}/
+      - N8N_EDITOR_BASE_URL=${N8N_PROTOCOL}://${DOMAIN_OR_IP}
+      - N8N_SECURE_COOKIE=true
+
+      # Auth básica
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+
+      # DB Postgres
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+
+      # Redis (colas/cache)
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - ./n8n:/home/node/.n8n
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - serenart_net
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: serenart_ollama
+    volumes:
+      - ./ollama:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - serenart_net
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: serenart_qdrant
+    volumes:
+      - ./qdrant:/qdrant/storage
+    restart: unless-stopped
+    networks:
+      - serenart_net
