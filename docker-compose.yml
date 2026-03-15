@@ -93,6 +93,9 @@ services:
       - N8N_EDITOR_BASE_URL=${N8N_PROTOCOL}://${DOMAIN_OR_IP}
       - N8N_SECURE_COOKIE=true
 
+      # AUMENTAR LÍMITE DE PAYLOAD 
+      - N8N_PAYLOAD_SIZE_MAX=50
+
       # Auth básica
       - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE}
       - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
@@ -111,8 +114,10 @@ services:
       - QUEUE_BULL_REDIS_PORT=6379
       - QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD}
 
-      # ✅ (Preparado para futuro) Custom nodes / extensions si luego querés meter el "router node"
-      #   Si no lo usás todavía, no molesta.
+      # RAG status callback key (shared with serenart-api)
+      - RAG_API_KEY=${RAG_API_KEY}
+
+      #  Custom nodes / extensions si luego querés meter el "router node"
       - N8N_CUSTOM_EXTENSIONS=/opt/n8n-custom
 
     volumes:
