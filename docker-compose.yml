@@ -161,3 +161,28 @@ services:
     restart: unless-stopped
     networks:
       - serenart_net
+
+  whisper-api:
+    build:
+      context: ./whisperApi
+      dockerfile: Dockerfile
+    container_name: serenart_whisper_api
+
+    # No expone puerto al VPS. Solo red interna Docker.
+    expose:
+      - "8000"
+
+    environment:
+      - WHISPER_MODEL=small
+      - WHISPER_DEVICE=cpu
+      - WHISPER_COMPUTE_TYPE=int8
+      - WHISPER_CPU_THREADS=4
+
+    mem_limit: 2500m
+
+    volumes:
+      - ./whisperApi/tmp:/tmp/whisper
+
+    restart: unless-stopped
+    networks:
+      - serenart_net
