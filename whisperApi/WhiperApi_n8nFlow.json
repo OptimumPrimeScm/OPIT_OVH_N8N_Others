@@ -1,0 +1,77 @@
+{
+  "name": "Upload audio to Whisper API",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Transcribir audio",
+        "formDescription": "Sube un archivo MP3/WAV/M4A para transcribirlo con faster-whisper.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "audio",
+              "fieldType": "file",
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "lastNode"
+      },
+      "id": "form-upload-audio",
+      "name": "Select Audio File",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2,
+      "position": [
+        300,
+        300
+      ],
+      "webhookId": "upload-audio-whisper"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://whisper-api:8000/transcribe",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "audio"
+            },
+            {
+              "name": "language",
+              "value": "es"
+            },
+            {
+              "name": "task",
+              "value": "transcribe"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-to-whisper-api",
+      "name": "Send to Whisper API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Select Audio File": {
+      "main": [
+        [
+          {
+            "node": "Send to Whisper API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

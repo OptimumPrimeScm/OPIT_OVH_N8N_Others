@@ -1,6 +1,3 @@
-# docker-compose.yml (final)
-# Nota: el campo "version" ya no hace falta en docker compose v2, lo quité.
-
 networks:
   serenart_net:
 
@@ -116,6 +113,8 @@ services:
 
       # RAG status callback key (shared with serenart-api)
       - RAG_API_KEY=${RAG_API_KEY}
+      - COLLABTEAMS_RAG_API_KEY=${COLLABTEAMS_RAG_API_KEY}
+      - N8N_LIBRETRANSLATE_URL=http://libretranslate:5000 
 
       #  Custom nodes / extensions si luego querés meter el "router node"
       - N8N_CUSTOM_EXTENSIONS=/opt/n8n-custom
@@ -184,5 +183,78 @@ services:
       - ./whisperApi/tmp:/tmp/whisper
 
     restart: unless-stopped
+    networks:
+      - serenart_net
+  
+  document-parser:
+    build:
+      context: ./documentParser
+      dockerfile: Dockerfile
+    container_name: serenart_document_parser
+
+    # 🔒 Solo interno (igual que whisper)
+    expose:
+      - "8000"
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    mem_limit: 1500m
+
+    environment:
+      - APP_MAX_UPLOAD_BYTES=52428800
+      - APP_WORK_DIR=/work
+
+    volumes:
+      - ./documentParser/work:/work
+
+    restart: unless-stopped
+    networks:
+      - serenart_net
+
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: serenart_libretranslate
+
+    # Internal-only service for n8n workflows
+    expose:
+      - "5000"
+
+    environment:
+      - LT_PORT=5000
+      - LT_LOAD_ONLY=en,es,it,fr
+
+    # Persist downloaded models and database
+    volumes:
+      - ./libretranslate/models:/home/libretranslate/.local
+      - ./libretranslate/db:/app/db
+
+    mem_limit: 1200m
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/languages').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+    restart: unless-stopped
+    networks:
+      - serenart_net
+  
+  ollama-embeddings:
+    image: ollama/ollama:latest
+    container_name: serenart_ollama_embeddings
+    restart: unless-stopped
+    ports:
+      - "11435:11434"
+    volumes:
+      - ./ollamaEmbeddings:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=-1
     networks:
       - serenart_net

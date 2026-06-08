@@ -1,0 +1,1 @@
+This is an.md file being used to test the Serenart Enhanced resources upload that transforms the files into vectorial text.

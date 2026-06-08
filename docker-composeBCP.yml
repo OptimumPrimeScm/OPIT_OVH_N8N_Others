@@ -75,6 +75,12 @@ services:
   n8n:
     image: n8nio/n8n:latest
     container_name: serenart_n8n
+
+    # ✅ Límite de memoria para evitar que n8n compita con Ollama y el sistema
+    mem_limit: 1500m
+    # (Opcional) reservar “piso” de memoria si tu compose lo soporta
+    # mem_reservation: 512m
+
     environment:
       - NODE_ENV=production
       - GENERIC_TIMEZONE=Europe/Madrid
@@ -86,6 +92,9 @@ services:
       - WEBHOOK_URL=${N8N_PROTOCOL}://${DOMAIN_OR_IP}/
       - N8N_EDITOR_BASE_URL=${N8N_PROTOCOL}://${DOMAIN_OR_IP}
       - N8N_SECURE_COOKIE=true
+
+      # AUMENTAR LÍMITE DE PAYLOAD 
+      - N8N_PAYLOAD_SIZE_MAX=50
 
       # Auth básica
       - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE}
@@ -104,8 +113,20 @@ services:
       - QUEUE_BULL_REDIS_HOST=redis
       - QUEUE_BULL_REDIS_PORT=6379
       - QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD}
+
+      # RAG status callback key (shared with serenart-api)
+      - RAG_API_KEY=${RAG_API_KEY}
+      - COLLABTEAMS_RAG_API_KEY=${COLLABTEAMS_RAG_API_KEY}
+      - N8N_LIBRETRANSLATE_URL=http://libretranslate:5000 
+
+      #  Custom nodes / extensions si luego querés meter el "router node"
+      - N8N_CUSTOM_EXTENSIONS=/opt/n8n-custom
+
     volumes:
       - ./n8n:/home/node/.n8n
+      # ✅ Carpeta donde luego podrías montar nodos custom (opcional, no rompe nada)
+      - ./n8n-custom:/opt/n8n-custom
+
     depends_on:
       - postgres
       - redis
@@ -116,6 +137,13 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: serenart_ollama
+
+    # ✅ Límite de memoria: suficiente para 7B y modelos multimodales moderados sin comerse el VPS.
+    #   Ajustalo a 6g si ves que te quedás corto con qwen2.5vl/llava.
+    mem_limit: 5g
+    # (Opcional) reservar “piso” de memoria si tu compose lo soporta
+    # mem_reservation: 2g
+
     volumes:
       - ./ollama:/root/.ollama
     restart: unless-stopped
@@ -125,8 +153,98 @@ services:
   qdrant:
     image: qdrant/qdrant:latest
     container_name: serenart_qdrant
+
+    # ✅ Límite moderado para que no crezca sin control
+    mem_limit: 1200m
+    # mem_reservation: 512m
+
     volumes:
       - ./qdrant:/qdrant/storage
+    restart: unless-stopped
+    networks:
+      - serenart_net
+
+  whisper-api:
+    build:
+      context: ./whisperApi
+      dockerfile: Dockerfile
+    container_name: serenart_whisper_api
+
+    # No expone puerto al VPS. Solo red interna Docker.
+    expose:
+      - "8000"
+
+    environment:
+      - WHISPER_MODEL=small
+      - WHISPER_DEVICE=cpu
+      - WHISPER_COMPUTE_TYPE=int8
+      - WHISPER_CPU_THREADS=4
+
+    mem_limit: 2500m
+
+    volumes:
+      - ./whisperApi/tmp:/tmp/whisper
+
+    restart: unless-stopped
+    networks:
+      - serenart_net
+  
+  document-parser:
+    build:
+      context: ./documentParser
+      dockerfile: Dockerfile
+    container_name: serenart_document_parser
+
+    # 🔒 Solo interno (igual que whisper)
+    expose:
+      - "8000"
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    mem_limit: 1500m
+
+    environment:
+      - APP_MAX_UPLOAD_BYTES=52428800
+      - APP_WORK_DIR=/work
+
+    volumes:
+      - ./documentParser/work:/work
+
+    restart: unless-stopped
+    networks:
+      - serenart_net
+
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: serenart_libretranslate
+
+    # Internal-only service for n8n workflows
+    expose:
+      - "5000"
+
+    environment:
+      - LT_PORT=5000
+      - LT_LOAD_ONLY=en,es,it,fr
+
+    # Persist downloaded models and database
+    volumes:
+      - ./libretranslate/models:/home/libretranslate/.local
+      - ./libretranslate/db:/app/db
+
+    mem_limit: 1200m
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/languages').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
     restart: unless-stopped
     networks:
       - serenart_net

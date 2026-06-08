@@ -20,3 +20,5 @@ certbot/www/
 # Nginx caches or temp (si existieran)
 **/cache/
 **/tmp/
+ollamaEmbeddings/
+libretranslate/models/
