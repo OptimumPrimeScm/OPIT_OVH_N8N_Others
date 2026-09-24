@@ -1,0 +1,41 @@
+# Merge this service into the existing Compose file. The existing
+# top-level serenart_net network is reused; no host port is published.
+services:
+  audio-slicer:
+    build:
+      context: ./audioSlicer
+      dockerfile: Dockerfile
+    container_name: serenart_audio_slicer
+    expose:
+      - "8000"
+    environment:
+      - AUDIO_SLICER_WORK_DIR=/work
+      - AUDIO_SLICER_MAX_UPLOAD_BYTES=536870912
+      - AUDIO_SLICER_MAX_CHUNK_BYTES=8388608
+      - AUDIO_SLICER_TARGET_CHUNK_BYTES=7602176
+      - AUDIO_SLICER_OVERLAP_SECONDS=1
+      - AUDIO_SLICER_MAX_CHUNKS=100
+      - AUDIO_SLICER_JOB_TTL_SECONDS=3600
+      - AUDIO_SLICER_FFMPEG_TIMEOUT_SECONDS=600
+      - AUDIO_SLICER_FFPROBE_TIMEOUT_SECONDS=120
+      - AUDIO_SLICER_MAX_CONCURRENT_JOBS=2
+      - AUDIO_SLICER_API_KEY=${AUDIO_SLICER_API_KEY:?Set AUDIO_SLICER_API_KEY in .env}
+    volumes:
+      - audio_slicer_work:/work
+    mem_limit: 768m
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - serenart_net
+
+volumes:
+  audio_slicer_work:
